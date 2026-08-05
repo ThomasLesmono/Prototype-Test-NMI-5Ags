@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nocturne — Musicality Identification</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root{
+  --bg: #12162a;
+  --bg-deep: #0b0e1d;
+  --card: #f4ecd8;
+  --card-ink: #201a10;
+  --brass: #e0a33e;
+  --brass-dim: #c98f2e;
+  --coral: #d9705a;
+  --teal: #4f9a94;
+  --rose: #c76f8f;
+  --slate: #6b7896;
+  --muted: rgba(244,236,216,0.55);
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+
+body{
+  background: radial-gradient(ellipse at top, #1b2244 0%, var(--bg) 45%, var(--bg-deep) 100%);
+  color: var(--card);
+  font-family: 'IBM Plex Sans', sans-serif;
+  min-height:100vh;
+  padding: 40px 16px 80px;
+  display:flex;
+  justify-content:center;
+}
+
+.wrap{ width:100%; max-width:700px; }
+
+.eyebrow{
+  font-size:12px;
+  letter-spacing:0.16em;
+  text-transform:uppercase;
+  color: var(--brass);
+  font-weight:600;
+  margin-bottom:10px;
+}
+
+h1{
+  font-family:'Fraunces', serif;
+  font-weight:700;
+  font-size:44px;
+  line-height:1;
+  letter-spacing:-0.01em;
+}
+
+.tagline{
+  font-family:'Fraunces', serif;
+  font-style:italic;
+  font-weight:400;
+  font-size:16px;
+  color: var(--brass);
+  margin: 6px 0 16px;
+  letter-spacing:0.02em;
+}
+
+.sub{
+  color: var(--muted);
+  font-size:15px;
+  line-height:1.6;
+  margin-bottom:28px;
+  max-width:56ch;
+}
+
+.card{
+  background: var(--card);
+  color: var(--card-ink);
+  border-radius:18px;
+  padding:32px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
+
+.start-btn{
+  margin-top:6px;
+  background: var(--brass);
+  color:#1a1305;
+  border:none;
+  font-family:'IBM Plex Sans',sans-serif;
+  font-weight:600;
+  font-size:15px;
+  padding:14px 26px;
+  border-radius:10px;
+  cursor:pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.start-btn:hover{ background: var(--brass-dim); transform: translateY(-1px); }
+.start-btn:focus-visible{ outline:3px solid var(--teal); outline-offset:2px; }
+
+.progress-track{
+  height:4px;
+  background: rgba(255,255,255,0.08);
+  border-radius:4px;
+  margin-bottom:28px;
+  overflow:hidden;
+}
+.progress-fill{
+  height:100%;
+  background: var(--brass);
+  transition: width 0.35s ease;
+}
+
+.q-count{
+  font-size:12px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color: var(--muted);
+  margin-bottom:8px;
+}
+.q-cluster{
+  display:inline-block;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  background: rgba(79,154,148,0.14);
+  color: var(--teal);
+  padding:4px 10px;
+  border-radius:20px;
+  margin-bottom:16px;
+}
+
+.q-text{
+  font-family:'Fraunces', serif;
+  font-size:22px;
+  font-weight:600;
+  line-height:1.35;
+  margin-bottom:26px;
+}
+
+.scale{ display:flex; gap:8px; margin-bottom:8px; }
+.scale button{
+  flex:1;
+  aspect-ratio:1;
+  border-radius:12px;
+  border:2px solid rgba(32,26,16,0.15);
+  background:#fff;
+  font-family:'IBM Plex Sans',sans-serif;
+  font-weight:600;
+  font-size:18px;
+  color: var(--card-ink);
+  cursor:pointer;
+  transition: all 0.12s ease;
+}
+.scale button:hover{ border-color: var(--brass); }
+.scale button.selected{
+  background: var(--brass);
+  border-color: var(--brass);
+  color:#1a1305;
+  transform: scale(1.05);
+}
+.scale-labels{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  color: rgba(32,26,16,0.55);
+  margin-bottom:26px;
+}
+
+.nav-row{ display:flex; justify-content:space-between; align-items:center; }
+.nav-btn{
+  background:none;
+  border:none;
+  font-family:'IBM Plex Sans',sans-serif;
+  font-weight:600;
+  font-size:14px;
+  color: var(--card-ink);
+  cursor:pointer;
+  padding:10px 4px;
+}
+.nav-btn:disabled{ opacity:0.3; cursor:default; }
+.nav-btn.primary{
+  background: var(--card-ink);
+  color: var(--card);
+  padding:10px 22px;
+  border-radius:10px;
+}
+.nav-btn.primary:disabled{ opacity:0.35; }
+
+/* EQ chart */
+.eq-grid{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px 10px;
+  margin: 24px 0 26px;
+}
+.eq-col{ display:flex; flex-direction:column; align-items:center; }
+.eq-bar-track{
+  width:100%;
+  height:100px;
+  display:flex;
+  align-items:flex-end;
+  background: rgba(32,26,16,0.06);
+  border-radius:8px;
+  overflow:hidden;
+}
+.eq-bar{ width:100%; border-radius:8px 8px 0 0; transition: height 0.7s cubic-bezier(.2,.9,.3,1); }
+.eq-label{ font-size:10px; text-align:center; margin-top:8px; color: rgba(32,26,16,0.6); font-weight:600; line-height:1.3; min-height:26px; }
+.eq-score{ font-size:10.5px; color: rgba(32,26,16,0.4); margin-top:2px; }
+
+.tier-badge{
+  display:inline-block;
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:0.05em;
+  text-transform:uppercase;
+  padding:2px 8px;
+  border-radius:20px;
+  margin-top:4px;
+}
+.tier-A{ background: rgba(224,163,62,0.25); color:#8a5f14; }
+.tier-B{ background: rgba(79,154,148,0.2); color:#2d5a56; }
+.tier-C{ background: rgba(199,111,143,0.2); color:#8a3a56; }
+
+.result-title{ font-family:'Fraunces', serif; font-size:14px; color: rgba(32,26,16,0.55); margin-bottom:4px; }
+.result-name{ font-family:'Fraunces', serif; font-size:30px; font-weight:700; margin-bottom:18px; }
+
+.narrative{ margin-bottom:22px; }
+.narrative p{ font-size:14.5px; line-height:1.75; color: rgba(32,26,16,0.85); margin-bottom:14px; }
+.narrative p.lead{ font-size:16.5px; line-height:1.65; color: var(--card-ink); font-weight:500; }
+.narrative p.closing{ font-size:14px; font-style:italic; color: rgba(32,26,16,0.65); border-left:3px solid var(--brass); padding-left:14px; }
+.narrative strong{ color: var(--card-ink); font-weight:700; }
+
+.maximize-box{
+  background: rgba(32,26,16,0.045);
+  border-radius:12px;
+  padding:16px 18px;
+  margin-bottom:24px;
+}
+.maximize-box h4{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color: var(--teal); margin-bottom:10px; font-weight:600; }
+.maximize-box ul{ padding-left:18px; }
+.maximize-box li{ font-size:13.5px; line-height:1.6; margin-bottom:6px; }
+
+.next-steps{
+  background: rgba(32,26,16,0.045);
+  border-radius:12px;
+  padding:16px 18px;
+  font-size:13px;
+  line-height:1.6;
+  color: rgba(32,26,16,0.8);
+  margin: 20px 0;
+}
+.next-steps b{ color: var(--card-ink); }
+
+.reset-btn{
+  background:none;
+  border:1.5px solid rgba(32,26,16,0.25);
+  color: var(--card-ink);
+  font-family:'IBM Plex Sans',sans-serif;
+  font-weight:600;
+  font-size:13px;
+  padding:10px 18px;
+  border-radius:10px;
+  cursor:pointer;
+}
+.reset-btn:hover{ background: rgba(32,26,16,0.06); }
+
+.hidden{ display:none; }
+
+@media (max-width:480px){
+  h1{ font-size:34px; }
+  .card{ padding:24px 18px; }
+  .eq-grid{ grid-template-columns: repeat(4, 1fr); gap:16px 6px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Babak 1 · Preferensi &amp; Pemetaan Tipe</div>
+  <h1>Nocturne</h1>
+  <div class="tagline">Musicality Identification</div>
+  <p class="sub">24 pernyataan, skala 1–5, 8 area musikalitas. Di akhir kamu dapat Tipe Utama + 2 Tipe Pendukung, lengkap dengan peta profesi hybrid kalau tipe-tipemu digabung.</p>
+
+  <div class="card">
+
+    <div id="screen-intro">
+      <p style="font-size:14px; line-height:1.7; margin-bottom:20px; color:rgba(32,26,16,0.75);">
+        Jawab jujur sesuai kecenderungan alami, bukan yang "seharusnya". Nggak ada jawaban salah — makin jujur, makin akurat peta yang kamu dapat.
+      </p>
+      <button class="start-btn" onclick="startQuiz()">Mulai Identifikasi →</button>
+    </div>
+
+    <div id="screen-quiz" class="hidden">
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="q-count" id="qCount">Pertanyaan 1 / 24</div>
+      <div class="q-cluster" id="qCluster">Telinga &amp; Nada</div>
+      <div class="q-text" id="qText">...</div>
+      <div class="scale" id="scaleButtons"></div>
+      <div class="scale-labels"><span>Bukan aku</span><span>Aku banget</span></div>
+      <div class="nav-row">
+        <button class="nav-btn" id="prevBtn" onclick="prevQ()">← Sebelumnya</button>
+        <button class="nav-btn primary" id="nextBtn" onclick="nextQ()" disabled>Lanjut</button>
+      </div>
+    </div>
+
+    <div id="screen-result" class="hidden">
+      <div class="eq-grid" id="eqChart"></div>
+
+      <div class="result-title">Profil Musikalitasmu</div>
+      <div class="result-name" id="topClusterName">-</div>
+
+      <div class="narrative" id="narrativeText"></div>
+
+      <div class="maximize-box">
+        <h4>Cara Memaksimalkan Tipe Utama</h4>
+        <ul id="maximizeList"></ul>
+      </div>
+
+      <div class="next-steps">
+        <b>Langkah lanjut:</b> Ini masih Babak 1 (preferensi). Untuk konfirmasi kemampuan aktual, cek pakai app seperti Perfect Ear / EarMaster (telinga), Sight Reading Factory (notasi), atau rekam & evaluasi diri untuk performa & gerak. Kalau hasil Babak 1 & 2 nggak sejalan, itu tandanya perlu Babak 3 (placement test langsung).
+      </div>
+
+      <button class="reset-btn" onclick="resetQuiz()">Ulangi Tes</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const clusters = [
+  {
+    name:'Telinga & Nada', color:'#e0a33e',
+    desc:'Kamu menangkap musik lewat rasa, bukan simbol — telinga jadi alat analisis utama.',
+    questions:[
+      'Waktu dengar lagu baru, kepala saya otomatis "menebak" progresi chord atau melodi berikutnya sebelum lagu itu sampai di sana.',
+      'Saya bisa membedakan dua rekaman lagu yang sama tapi beda kunci/tempo, walau selisihnya kecil.',
+      'Kalau disuruh nyanyi harmoni/isian vokal dadakan, saya bisa cari nada yang pas tanpa dikasih tahu dulu.'
+    ],
+    instrument:'Gitar, vokal, biola, harmonika',
+    genre:'Blues, folk, R&B, jazz vokal',
+    profession:'Musisi sesi, vokalis, cover artist, pelatih ear training, transcriber',
+    maximize:[
+      'Transkripsi 1 lagu pendek per minggu murni dari telinga, tanpa lihat chord chart.',
+      'Latihan interval & progresi chord pakai aplikasi ear training 10-15 menit tiap hari.',
+      'Coba nyanyikan harmoni/isian vokal dadakan di lagu favoritmu.'
+    ]
+  },
+  {
+    name:'Ritme & Waktu', color:'#d9705a',
+    desc:'Waktu adalah bahasa utamamu — kamu merasakan pulsa musik sebelum memikirkannya.',
+    questions:[
+      'Saya bisa merasakan "pergeseran" kecil di tempo lagu (nge-drag atau ngebut sedikit) tanpa lihat metronom.',
+      'Saat dengar lagu dengan banyak lapisan ritme (drum, perkusi, bass beda pola), saya bisa memisahkan dan mengikuti masing-masing di kepala.',
+      'Saya suka main dengan ketukan yang nggak biasa (odd time signature, sinkopasi berat) dibanding ketukan lurus 4/4.'
+    ],
+    instrument:'Drum/perkusi, bass, cajon, DJ controller',
+    genre:'Funk, hip-hop, EDM, reggae, afrobeat',
+    profession:'Drummer, beatmaker, DJ, music editor, rhythm programmer',
+    maximize:[
+      'Latihan metronom dengan variasi tempo & subdivision tiap sesi.',
+      'Pelajari groove spesifik dari genre favorit not per not.',
+      'Coba produksi beat sendiri pakai software sederhana.'
+    ]
+  },
+  {
+    name:'Teori & Struktur', color:'#4f9a94',
+    desc:'Kamu ingin tahu "mesin" di balik musik — struktur dan logikanya menarik buatmu.',
+    questions:[
+      'Saya penasaran kenapa satu lagu terasa "sedih" secara musikal (chord minor, modulasi), bukan cuma liriknya.',
+      'Saya bisa memetakan struktur lagu (verse-chorus-bridge, jumlah birama tiap bagian) cukup dengan mendengarkan.',
+      'Saya lebih suka memahami "aturan" dulu sebelum bereksperimen, dibanding coba-coba dulu baru cari tahu aturannya belakangan.'
+    ],
+    instrument:'Piano/keyboard, instrumen orkestra',
+    genre:'Klasik, film score, big band jazz, prog rock',
+    profession:'Arranger, komposer, guru musik, transcriber, pengarah musik (music director) film/game/digital',
+    maximize:[
+      'Belajar harmoni & progresi chord terstruktur, bukan cuma potongan-potongan di YouTube.',
+      'Analisis 1 lagu favorit tiap minggu: cari chord, struktur, dan alasan kenapa terasa "kena".',
+      'Coba arrange ulang lagu sederhana untuk instrumen/format berbeda.'
+    ]
+  },
+  {
+    name:'Kreativitas & Ekspresi', color:'#a67ec2',
+    desc:'Kamu nggak puas cuma memainkan karya orang — dorongan menciptakan itu kuat.',
+    questions:[
+      'Saya sering dapat ide melodi/lirik random muncul di kepala, bahkan saat nggak lagi latihan.',
+      'Saya lebih suka "merusak" aransemen standar dan bikin versi saya sendiri, dibanding memainkan persis seperti aslinya.',
+      'Saya nggak takut hasil karya saya terdengar aneh di awal, karena saya percaya proses eksplorasi itu penting.'
+    ],
+    instrument:'Gitar, piano, saxophone, synth',
+    genre:'Jazz, singer-songwriter/indie, musik eksperimental',
+    profession:'Composer, songwriter, jazz improviser, sound designer, produser kreatif',
+    maximize:[
+      'Jadwalkan sesi songwriting/composing rutin, walau cuma 15 menit sehari.',
+      'Latihan improvisasi terarah: mulai dari 1-2 chord, perluas bertahap.',
+      'Simpan ide-ide "aneh" — jangan langsung dibuang, banyak ide besar mulai dari situ.'
+    ]
+  },
+  {
+    name:'Panggung & Performa', color:'#5b7fd9',
+    desc:'Kamu "hidup" saat ada mata yang menonton — panggung adalah tempatmu berkembang.',
+    questions:[
+      'Adrenalin sebelum tampil bikin saya lebih fokus, bukan malah bikin saya kaku/blank.',
+      'Saya bisa "membaca" reaksi penonton secara real-time dan menyesuaikan performa saya di tempat.',
+      'Saya lebih menikmati momen tampil langsung dibanding proses latihan/rekaman berulang-ulang di ruangan tertutup.'
+    ],
+    instrument:'Vokal, gitar, instrumen lead yang ekspresif',
+    genre:'Rock, pop, musik teater, live band',
+    profession:'Frontman/performer, live session musician, entertainer, MC musik',
+    maximize:[
+      'Cari kesempatan open mic/tampil rutin, sekecil apa pun panggungnya.',
+      'Rekam video tiap performa, evaluasi bahasa tubuh & interaksi dengan penonton.',
+      'Latih "pemulihan" dari kesalahan di panggung — itu skill tersendiri yang bisa dilatih.'
+    ]
+  },
+  {
+    name:'Kolaborasi & Komunikasi', color:'#c99a3e',
+    desc:'Musik buatmu adalah bahasa untuk terhubung dengan orang lain, bukan aktivitas solo.',
+    questions:[
+      'Saya bisa cepat "membaca" arah musik teman jamming tanpa harus dijelaskan dulu secara verbal.',
+      'Saya nyaman memberi masukan/arahan ke musisi lain soal bagian musik mereka, tanpa bikin suasana canggung.',
+      'Saya justru berkembang lebih baik saat main dalam grup/band, dibanding latihan sendirian.'
+    ],
+    instrument:'Bass, rhythm guitar, keys',
+    genre:'Jazz combo, jam band, cover band, worship/gospel',
+    profession:'Bandleader, session musician, music director (live), produser kolaboratif',
+    maximize:[
+      'Rutin ikut sesi jamming, walau dengan orang yang belum pernah main bareng.',
+      'Gabung komunitas/band tetap supaya terbiasa membaca dinamika grup.',
+      'Belajar istilah dasar band (Nashville number system, cue) supaya komunikasi makin cepat.'
+    ]
+  },
+  {
+    name:'Gerak & Tubuh', color:'#c76f8f',
+    desc:'Musik buatmu terasa lewat tubuh — gerak dan ritme nyaris jadi satu hal.',
+    questions:[
+      'Tubuh saya otomatis bergerak (goyang, ayun kepala, langkah kaki) mengikuti musik, bahkan saat saya nggak sadar.',
+      'Saya bisa mengingat dan mengulang rangkaian gerakan/koreografi dengan cukup cepat setelah lihat sekali-dua kali.',
+      'Saya merasa lebih "paham" musik lewat gerakan tubuh (menari, mengayun) dibanding cuma duduk diam mendengarkan.'
+    ],
+    instrument:'Body percussion, drum, atau tubuh sebagai instrumen utama',
+    genre:'Musik dansa, EDM, funk, musik tradisional dengan tarian',
+    profession:'Penari, koreografer, instruktur dance/balet, musical theatre performer',
+    maximize:[
+      'Ambil kelas gerak/tari rutin, bahkan yang basic, untuk melatih kesadaran tubuh terhadap ritme.',
+      'Coba koreografi sederhana untuk 1 lagu favorit, ulangi sampai lancar.',
+      'Latihan "mendengar dengan tubuh" — dengar lagu sambil tutup mata, biarkan tubuh merespons.'
+    ]
+  },
+  {
+    name:'Ketelitian Sonic & Teknis', color:'#6b7896',
+    desc:'Kamu peka terhadap detail suara itu sendiri — tekstur, ruang, dan kualitas sonic.',
+    questions:[
+      'Saya bisa dengar perbedaan kualitas suara antara dua rekaman/headphone yang beda, walau orang lain bilang "sama aja".',
+      'Saya suka mengutak-atik EQ, reverb, atau efek suara sampai detail kecil terasa pas.',
+      'Saya lebih tertarik proses "membentuk" suara di balik layar (mixing, produksi) dibanding tampil di depan.'
+    ],
+    instrument:'DAW (software produksi), studio monitor, MIDI controller',
+    genre:'Musik elektronik, film score, produksi studio lintas genre',
+    profession:'Mixing engineer, mastering engineer, audio producer, sound engineer studio/live',
+    maximize:[
+      'Latihan critical listening: bandingkan 2 mix/rekaman beda kualitas tiap hari, catat perbedaannya.',
+      'Belajar dasar mixing (EQ, compression, reverb) lewat software gratis.',
+      'Mixing ulang 1 lagu sederhana tiap minggu, minta feedback dari orang lain.'
+    ]
+  }
+];
+
+const combos = {
+  '0-1':{name:'Groove Ear', profs:'Musisi ritme-melodi (bassist/gitaris groove), live looper, produser groove-based'},
+  '0-2':{name:'Analytical Ear', profs:'Transcriber profesional, ear-training coach, orchestrator'},
+  '0-3':{name:'Melodic Instinct', profs:'Penulis lagu/topline writer, improviser jazz, folk singer-songwriter'},
+  '0-4':{name:'Responsive Performer', profs:'Busker, vokalis improvisasi live, performer looping'},
+  '0-5':{name:'Ensemble Ear', profs:'Musisi sesi, accompanist, arranger harmoni vokal'},
+  '0-6':{name:'Musical Body', profs:'Penyanyi-penari, performer musical theatre, instruktur ritme & gerak'},
+  '0-7':{name:'Golden Ears', profs:'Mixing engineer, mastering engineer, quality control audio/A&R'},
+  '1-2':{name:'Structured Groove', profs:'Composer musik ritme-berat, arranger drum, editor musik film'},
+  '1-3':{name:'Beat Architect', profs:'Beatmaker/produser, drummer-komposer, sound designer ritme'},
+  '1-4':{name:'Kinetic Performer', profs:'Drummer/perkusionis panggung, DJ performer, live electronic act'},
+  '1-5':{name:'Groove Anchor', profs:'Bassist/drummer band tetap, rhythm section leader'},
+  '1-6':{name:'Embodied Time', profs:'Penari, koreografer, drum corps/marching band, instruktur dance-rhythm'},
+  '1-7':{name:'Precision Timing', profs:'Producer/beat engineer, spesialis editing & kuantisasi, programmer MIDI'},
+  '2-3':{name:'Constructive Imagination', profs:'Komposer, arranger, composer musik film/game'},
+  '2-4':{name:'Informed Performer', profs:'Solois klasik, performer resital, conductor-performer'},
+  '2-5':{name:'Music Director Type', profs:'Music director (live/digital), konduktor paduan suara, pelatih ensemble'},
+  '2-6':{name:'Structured Motion', profs:'Composer musik untuk tari/balet, répétiteur balet'},
+  '2-7':{name:'Systematic Sound', profs:'Orchestrator, arranger teknis film score, music copyist/notator'},
+  '3-4':{name:'Expressive Performer', profs:'Singer-songwriter performer, solois jazz improvisasi, musisi spoken word'},
+  '3-5':{name:'Collaborative Creator', profs:'Co-writer, songwriter band, produser yang kerja bareng artis'},
+  '3-6':{name:'Devised Movement', profs:'Koreografer karya orisinal, seniman dance-theatre'},
+  '3-7':{name:'Sonic Innovator', profs:'Sound designer, produser musik elektronik, audio designer film/game'},
+  '4-5':{name:'Ensemble Leader', profs:'Bandleader, frontman, music director panggung live'},
+  '4-6':{name:'Total Performer', profs:'Lead musical theatre, penyanyi-penari, performer choreo'},
+  '4-7':{name:'Live Engineer Hybrid', profs:'FOH engineer yang juga performer, DJ/performer hybrid'},
+  '5-6':{name:'Ensemble Movement', profs:'Anggota dance company, kolaborator koreografi grup, community dance leader'},
+  '5-7':{name:'Studio Collaborator', profs:'Recording engineer yang kerja bareng band, produser studio kolaboratif'},
+  '6-7':{name:'Precision Body-Sound', profs:'Sound-motion artist (media interaktif), foley/movement-based sound design, dance-tech (motion capture)'}
+};
+
+function comboKey(i,j){ return i<j ? i+'-'+j : j+'-'+i; }
+
+let flatQuestions = [];
+clusters.forEach((c, ci) => { c.questions.forEach(q => flatQuestions.push({clusterIndex: ci, text: q})); });
+
+let current = 0;
+let answers = new Array(flatQuestions.length).fill(null);
+
+function startQuiz(){
+  document.getElementById('screen-intro').classList.add('hidden');
+  document.getElementById('screen-quiz').classList.remove('hidden');
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q = flatQuestions[current];
+  const cluster = clusters[q.clusterIndex];
+  document.getElementById('qCount').textContent = 'Pertanyaan ' + (current+1) + ' / ' + flatQuestions.length;
+  document.getElementById('qCluster').textContent = cluster.name;
+  document.getElementById('qText').textContent = q.text;
+  document.getElementById('progressFill').style.width = (current/flatQuestions.length*100) + '%';
+
+  const scaleDiv = document.getElementById('scaleButtons');
+  scaleDiv.innerHTML = '';
+  for(let i=1;i<=5;i++){
+    const btn = document.createElement('button');
+    btn.textContent = i;
+    if(answers[current] === i) btn.classList.add('selected');
+    btn.onclick = () => selectAnswer(i);
+    scaleDiv.appendChild(btn);
+  }
+
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = answers[current] === null;
+  document.getElementById('nextBtn').textContent = current === flatQuestions.length - 1 ? 'Lihat Hasil' : 'Lanjut';
+}
+
+function selectAnswer(val){ answers[current] = val; renderQuestion(); }
+
+function nextQ(){
+  if(answers[current] === null) return;
+  if(current < flatQuestions.length - 1){ current++; renderQuestion(); }
+  else { showResults(); }
+}
+
+function prevQ(){ if(current > 0){ current--; renderQuestion(); } }
+
+function showResults(){
+  document.getElementById('screen-quiz').classList.add('hidden');
+  document.getElementById('screen-result').classList.remove('hidden');
+
+  const scores = clusters.map((c, ci) => {
+    const qIndices = flatQuestions.map((q,i)=>q.clusterIndex===ci ? i : -1).filter(i=>i>=0);
+    const sum = qIndices.reduce((s,i)=> s + (answers[i]||0), 0);
+    return {cluster: c, index: ci, score: sum, max: qIndices.length * 5};
+  });
+
+  const sortedByScore = [...scores].sort((a,b)=> b.score - a.score);
+  const rankOf = {};
+  sortedByScore.forEach((s, rank) => { rankOf[s.index] = rank; });
+
+  const eq = document.getElementById('eqChart');
+  eq.innerHTML = '';
+  scores.forEach(s => {
+    const pct = Math.max((s.score / 15) * 100, 5);
+    const rank = rankOf[s.index];
+    let badge = '';
+    if(rank === 0) badge = '<div class="tier-badge tier-A">A</div>';
+    else if(rank === 1) badge = '<div class="tier-badge tier-B">B</div>';
+    else if(rank === 2) badge = '<div class="tier-badge tier-C">C</div>';
+    const col = document.createElement('div');
+    col.className = 'eq-col';
+    col.innerHTML =
+      '<div class="eq-bar-track"><div class="eq-bar" style="height:' + pct + '%; background:' + s.cluster.color + '"></div></div>' +
+      '<div class="eq-label">' + s.cluster.name + '</div>' +
+      '<div class="eq-score">' + s.score + '/15</div>' + badge;
+    eq.appendChild(col);
+  });
+
+  const A = sortedByScore[0], B = sortedByScore[1], C = sortedByScore[2];
+
+  document.getElementById('topClusterName').textContent = A.cluster.name;
+
+  const maxList = document.getElementById('maximizeList');
+  maxList.innerHTML = '';
+  A.cluster.maximize.forEach(tip => {
+    const li = document.createElement('li');
+    li.textContent = tip;
+    maxList.appendChild(li);
+  });
+
+  const lower = s => s.charAt(0).toLowerCase() + s.slice(1).replace(/\.$/, '');
+
+  const comboAB = combos[comboKey(A.index, B.index)];
+  const comboAC = combos[comboKey(A.index, C.index)];
+  const comboBC = combos[comboKey(B.index, C.index)];
+
+  const p1 =
+    'Kecenderunganmu paling kuat ada di <strong>' + A.cluster.name + '</strong> (' + A.score + '/15). ' +
+    A.cluster.desc + ' Ini bikin kamu paling nyambung lewat instrumen seperti <strong>' + A.cluster.instrument +
+    '</strong>, di ranah genre seperti <strong>' + A.cluster.genre + '</strong> — dan kalau ditarik jadi satu jalur ' +
+    'profesi murni, arah paling alami buat kamu adalah <strong>' + A.cluster.profession + '</strong>.';
+
+  const p2 =
+    'Tapi itu belum semua ceritanya. Kamu juga punya dua tipe pendukung yang ikut mewarnai caramu bermusik: ' +
+    '<strong>' + B.cluster.name + '</strong> (' + B.score + '/15) dan <strong>' + C.cluster.name + '</strong> (' + C.score + '/15). ' +
+    B.cluster.name + ' berarti ' + lower(B.cluster.desc) + ', sementara ' + C.cluster.name + ' berarti ' + lower(C.cluster.desc) + '.';
+
+  const p3 =
+    'Nah, di sinilah bagian menariknya — kombinasi tipe-tipe ini membuka jalur profesi lain di luar jalur utama. ' +
+    'Kalau <strong>' + A.cluster.name + '</strong> ketemu <strong>' + B.cluster.name + '</strong>, itu mengarah ke profil ' +
+    '<strong>"' + comboAB.name + '"</strong> — cocok untuk ' + comboAB.profs + '. Kalau <strong>' + A.cluster.name +
+    '</strong> ketemu <strong>' + C.cluster.name + '</strong>, arahnya jadi <strong>"' + comboAC.name + '"</strong> — ' +
+    comboAC.profs + '. Dan kalau dua tipe pendukungmu sendiri, <strong>' + B.cluster.name + '</strong> dan <strong>' +
+    C.cluster.name + '</strong>, digabung tanpa melibatkan tipe utama, itu jalur tersembunyi bernama ' +
+    '<strong>"' + comboBC.name + '"</strong> — ' + comboBC.profs + '.';
+
+  const p4 =
+    'Singkatnya: <strong>' + A.cluster.name + '</strong> adalah fondasi utamamu, sedangkan <strong>' + B.cluster.name +
+    '</strong> dan <strong>' + C.cluster.name + '</strong> adalah bumbu yang bikin kombinasimu unik. Kamu nggak harus ' +
+    'pilih cuma satu jalur — banyak musisi profesional justru berkembang tepat di titik temu dua-tiga tipe seperti ini.';
+
+  document.getElementById('narrativeText').innerHTML =
+    '<p class="lead">' + p1 + '</p>' +
+    '<p>' + p2 + '</p>' +
+    '<p>' + p3 + '</p>' +
+    '<p class="closing">' + p4 + '</p>';
+}
+
+function resetQuiz(){
+  current = 0;
+  answers = new Array(flatQuestions.length).fill(null);
+  document.getElementById('screen-result').classList.add('hidden');
+  document.getElementById('screen-intro').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
